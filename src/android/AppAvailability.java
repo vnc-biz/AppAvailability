@@ -6,9 +6,13 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import android.os.Build;
+import android.os.Build.VERSION_CODES;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageInfo;
+import android.content.pm.InstallSourceInfo;
+import android.util.Log;
 
 public class AppAvailability extends CordovaPlugin {
     @Override
@@ -20,30 +24,48 @@ public class AppAvailability extends CordovaPlugin {
         }
         return false;
     }
-    
+
     // Thanks to http://floresosvaldo.com/android-cordova-plugin-checking-if-an-app-exists
     public PackageInfo getAppPackageInfo(String uri) {
         Context ctx = this.cordova.getActivity().getApplicationContext();
         final PackageManager pm = ctx.getPackageManager();
 
         try {
-            return pm.getPackageInfo(uri, PackageManager.GET_ACTIVITIES);
+            return pm.getPackageInfo(uri, 0);
         }
         catch(PackageManager.NameNotFoundException e) {
             return null;
         }
     }
-    
+
+    public InstallSourceInfo getInstallSourceInfo(String uri) {
+        Context ctx = this.cordova.getActivity().getApplicationContext();
+        final PackageManager pm = ctx.getPackageManager();
+
+        try {
+            return pm.getInstallSourceInfo(uri);
+        }
+        catch(PackageManager.NameNotFoundException e) {
+            return null;
+        }
+    }
+
+
     private void checkAvailability(String uri, CallbackContext callbackContext) {
 
         PackageInfo info = getAppPackageInfo(uri);
+        InstallSourceInfo sourceInfo = getInstallSourceInfo(uri);
 
+        Log.d("appavailability", "packageinfo: " + info.toString());
+        Log.d("appavailability", "packageinfo installSource: " + sourceInfo.toString());
+        Log.d("appavailability", "packageinfo installSource info: " + sourceInfo.getInstallingPackageName());
         if(info != null) {
             try {
-                callbackContext.success(this.convertPackageInfoToJson(info));
-            } 
+
+                callbackContext.success(this.convertPackageInfoToJson(info, sourceInfo.getInstallingPackageName()));
+            }
             catch(JSONException e) {
-                callbackContext.error("");    
+                callbackContext.error("");
             }
         }
         else {
@@ -51,11 +73,12 @@ public class AppAvailability extends CordovaPlugin {
         }
     }
 
-    private JSONObject convertPackageInfoToJson(PackageInfo info) throws JSONException {
+    private JSONObject convertPackageInfoToJson(PackageInfo info, String installSource) throws JSONException {
         JSONObject json = new JSONObject();
         json.put("version", info.versionName);
         json.put("appId", info.packageName);
-
+        json.put("installSource", installSource);
+        Log.d("appavailability", "packageinfo json: " + json.toString());
         return json;
     }
 }
